@@ -4,34 +4,63 @@ import os
 
 app = Flask(__name__)
 
-# Environment Variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# OpenRouter Configuration
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# You can change the model if needed
-MODEL = "openai/gpt-4o-mini"
+MODEL = "meta-llama/llama-3-8b-instruct:free"
 
-@app.route("/webhook", methods=["POST"])
+@app.route("/", methods=["GET"])
+def home():
+
+    return jsonify({
+        "status": "Running"
+    })
+
+@app.route("/webhook", methods=["GET", "POST"])
 def webhook():
+
+    if request.method == "GET":
+
+        return jsonify({
+            "message": "Webhook endpoint is active"
+        })
+
     try:
+
         data = request.json
 
-        # Incoming text from webhook
-        # Change this key based on your incoming payload
-        text = data.get("text", "")
+        texts = []
+
+        response_set = data.get("responseSet", [])
+
+        for question in response_set:
+
+            answer_values = question.get("answerValues", [])
+
+            for answer in answer_values:
+
+                value = answer.get("value", {})
+
+                extracted_text = value.get("text", "").strip()
+
+                if extracted_text and extracted_text.upper() != "N/A":
+
+                    texts.append(extracted_text)
+
+        text = " ".join(texts)
 
         if not text:
+
             return jsonify({
                 "success": False,
-                "message": "No text provided"
+                "message": "No valid text responses found"
             }), 400
 
         prompt = f"""
 You are a sentiment analysis engine.
 
-Analyze the sentiment of the following text.
+Analyze the sentiment of the following survey response.
 
 Rules:
 - Return ONLY one word
@@ -39,7 +68,7 @@ Rules:
 - Negative
 - Neutral
 
-Text:
+Survey Response:
 {text}
 """
 
@@ -77,23 +106,19 @@ Text:
 
         return jsonify({
             "success": True,
-            "input_text": text,
+            "responseID": data.get("responseID"),
+            "surveyID": data.get("surveyID"),
+            "surveyName": data.get("surveyName"),
+            "textAnalyzed": text,
             "sentiment": sentiment
         })
 
     except Exception as e:
+
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
-
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "Running"
-    })
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
