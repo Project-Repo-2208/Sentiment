@@ -8,7 +8,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-MODEL = "meta-llama/llama-3-8b-instruct:free"
+MODEL = "google/gemma-3-27b-it:free"
 
 @app.route("/", methods=["GET"])
 def home():
